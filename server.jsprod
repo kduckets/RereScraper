@@ -1,0 +1,104 @@
+// set up ========================
+   var express = require('express');
+    var fs = require('fs');
+    var request = require('request');
+    var cheerio = require('cheerio');
+    var app     = express();
+
+    // configuration =================
+
+    //mongoose.connect('mongodb://node:nodeuser@mongo.onmodulus.net:27017/uwO3mypu');     // connect to mongoDB database on modulus.io
+
+    app.use(express.static(__dirname + '/app'));                 // set the static files location /public/img will be /img for users
+    var https = require('https');
+      var router = express.Router(); 
+
+      // test route to make sure everything is working (accessed at GET http://localhost:8080/api)
+router.get('/', function(req, res) {
+    res.json({ message: 'hooray! welcome to our api!' });   
+});
+
+router.get('/scrape', function(req, res){
+
+    var phantom = require('phantom');
+ 
+    phantom.create(function (ph) {
+     ph.createPage(function (page) {
+    /* the page actions */
+
+ page.open("http://www.phantasytour.com/bands/phish/threads/", function (status) {
+      console.log("opened PT? ", status);
+      page.evaluate(function () { return document.title; }, function (result) {
+        if(result){
+        console.log('Page title is ' + result);
+   
+
+        if(result.indexOf('Phish') > -1){
+        page.injectJs('http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js', function() {
+                //jQuery Loaded.
+                //Wait for a bit for AJAX content to load on the page. Here, we are waiting 5 seconds.
+                setTimeout(function() {
+                    return page.evaluate(function() {
+ 
+                        //Get what you want from the page using jQuery. A good way is to populate an object with all the jQuery commands that you need and then return the object.
+                        var linkArr = [];
+                        $('a').each(function() {
+                            
+                            linkArr.push($(this).text());
+
+                        });
+ 
+                        return {
+                            links: linkArr,
+                        };
+
+                    
+
+                    }, function(result) {
+
+                        if(result && result.links){
+                        console.log(result.links);
+                        var strArray = result.links;
+
+                         for (var j=0; j<strArray.length; j++) {
+                        if (strArray[j].match("rere") || strArray[j].match("re-re") || strArray[j].match("rerelease") || strArray[j].match("re-release")){
+
+
+                                     var TMClient = require('textmagic-rest-client');
+  
+                             var c = new TMClient('jamesanderson', 'obI0Vv5Epr85Jmn9XcmqSsPw52JNVJ');
+                             c.Messages.send({text: 'Possible rere alert: ' + strArray[j], phones:'14152508533,19784306872,19789734390,19783282088,19788521242,19789878891'}, function(err, res){
+                                    console.log('Messages.send()', err, res);
+                                 });
+
+                                res.json({ message: 'found a hit:' + strArray[j] }); 
+                        }
+                    };
+                                 }  
+                        ph.exit();
+
+        
+                    });
+                }, 5000);
+    })
+     }
+ }
+    })
+          });
+
+
+  });
+}, {
+  dnodeOpts: {
+    weak: false
+  }
+});
+            
+});
+
+    // REGISTER OUR ROUTES -------------------------------
+// all of our routes will be prefixed with /api
+app.use('/api', router);
+  
+    app.listen(8080);
+    console.log("App listening on port 8080");
